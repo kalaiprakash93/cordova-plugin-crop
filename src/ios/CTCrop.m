@@ -7,6 +7,8 @@
 @property (assign) NSUInteger quality;
 @property (assign) NSUInteger targetWidth;
 @property (assign) NSUInteger targetHeight;
+@property (assign) NSInteger widthRatio;
+@property (assign) NSInteger heightRatio;
 @end
 
 @implementation CTCrop
@@ -19,13 +21,15 @@
     self.quality = options[@"quality"] ? [options[@"quality"] intValue] : 100;
     self.targetWidth = options[@"targetWidth"] ? [options[@"targetWidth"] intValue] : -1;
     self.targetHeight = options[@"targetHeight"] ? [options[@"targetHeight"] intValue] : -1;
+    self.widthRatio = options[@"widthRatio"] ? [options[@"widthRatio"] intValue] : -1;
+    self.heightRatio = options[@"heightRatio"] ? [options[@"heightRatio"] intValue] : -1;
+    
     NSString *filePrefix = @"file://";
     
     if ([imagePath hasPrefix:filePrefix]) {
         imagePath = [imagePath substringFromIndex:[filePrefix length]];
     }
-    
-    
+     
     if (!(image = [UIImage imageWithContentsOfFile:imagePath])) {
         NSDictionary *err = @{
                               @"message": @"Image doesn't exist",
@@ -42,15 +46,30 @@
     
     CGFloat width = self.targetWidth > -1 ? (CGFloat)self.targetWidth : image.size.width;
     CGFloat height = self.targetHeight > -1 ? (CGFloat)self.targetHeight : image.size.height;
-    CGFloat length = MIN(width, height);
-    cropController.toolbarHidden = YES;
-    cropController.rotationEnabled = NO;
-    cropController.keepingCropAspectRatio = YES;
+    CGFloat croperWidth;
+    CGFloat croperHeight;
     
-    cropController.imageCropRect = CGRectMake((width - length) / 2,
-                                              (height - length) / 2,
-                                              length,
-                                              length);
+     if (self.widthRatio < 0 || self.heightRatio < 0){
+         cropController.keepingCropAspectRatio = NO;
+         croperWidth = MIN(width, height);
+         croperHeight = MIN(width, height); 
+    } else {
+         cropController.keepingCropAspectRatio = YES;
+         if(self.widthRatio > self.heightRatio) {
+             croperWidth = width;
+             croperHeight = width * self.heightRatio / self.widthRatio;
+         } else {
+             croperWidth = height * self.widthRatio / self.heightRatio;
+             croperHeight = height;
+         }
+     }
+     
+    cropController.toolbarHidden = YES;
+     cropController.rotationEnabled = NO;
+     cropController.imageCropRect = CGRectMake((width - croperWidth) / 2,
+                                               (height - croperHeight) / 2,
+                                               croperWidth,
+                                               croperHeight);
     
     self.callbackId = command.callbackId;
     UINavigationController *navigationController = [[UINavigationController alloc] initWithRootViewController:cropController];
@@ -96,6 +115,14 @@
     self.callbackId = nil;
 }
 
+- (id)getCurrentDateTime {
+    NSDateFormatter *dateFormatter = [[NSDateFormatter alloc] init];
+    NSLocale *locale = [[NSLocale alloc]
+                        initWithLocaleIdentifier:@"US"];
+    [dateFormatter setLocale:locale];
+    return dateFormatter;
+}
+
 #pragma mark - Utilites
 
 - (NSString*)tempFilePath:(NSString*)extension
@@ -103,11 +130,13 @@
     NSString* docsPath = [NSTemporaryDirectory()stringByStandardizingPath];
     NSFileManager* fileMgr = [[NSFileManager alloc] init]; // recommended by Apple (vs [NSFileManager defaultManager]) to be threadsafe
     NSString* filePath;
+	NSDateFormatter *dateFormatter = [self getCurrentDateTime];
+	[dateFormatter setDateFormat:@"yyyyMMddHHmmss"];
     
     // generate unique file name
     int i = 1;
     do {
-        filePath = [NSString stringWithFormat:@"%@/%@%03d.%@", docsPath, CDV_PHOTO_PREFIX, i++, extension];
+        filePath = [NSString stringWithFormat:@"%@/%@%@.%@", docsPath, CDV_PHOTO_PREFIX, [dateFormatter stringFromDate:[NSDate date]], extension];
     } while ([fileMgr fileExistsAtPath:filePath]);
     
     return filePath;
