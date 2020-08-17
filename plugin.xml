@@ -57,9 +57,9 @@
 
     <framework src="com.soundcloud.android:android-crop:1.0.0@aar" />
 
-    <config-file target="AndroidManifest.xml" parent="/manifest/application">
+    <!--<config-file target="AndroidManifest.xml" parent="/manifest/application">
       <activity android:name="com.soundcloud.android.crop.CropImageActivity" />
-    </config-file>
+    </config-file>-->
 
     <config-file target="AndroidManifest.xml" parent="/manifest">
         <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
